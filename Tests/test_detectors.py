@@ -1,7 +1,12 @@
 """
 Test suite for Model Doctor detectors.
+
+File: test_detectors.py
+Author: Yousuf S.R. Sakkaf
+
 Each test builds a small, deliberately-broken (or deliberately-clean)
 scenario and asserts the relevant detector fires (or doesn't).
+
 Run with: pytest tests/test_detectors.py -v
 """
 import sys, os
