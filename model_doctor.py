@@ -368,50 +368,76 @@ def run_audit(pipeline, X_train, X_test, y_train, y_test) -> list[AuditFinding]:
 # Report generation
 # ---------------------------------------------------------------------------
 
-_SEVERITY_STYLE = {
-    "critical": {"border": "#dc2626", "bg": "#fef2f2", "label": "\U0001F534 Critical"},
-    "warning":  {"border": "#d97706", "bg": "#fffbeb", "label": "\U0001F7E1 Warning"},
-    "info":     {"border": "#2563eb", "bg": "#eff6ff", "label": "\U0001F535 Info"},
+# ---------------------------------------------------------------------------
+# Report generation — styled to match the project's established HTML theme
+# (section_header / subsection_header / colored severity boxes, same visual
+# language as prerequisites.py's success_box/warning_box/info_box pattern)
+# ---------------------------------------------------------------------------
+
+PRIMARY_COLOR = "indigo"
+SECONDARY_COLOR = "thistle"
+
+SEVERITY_STYLE = {
+    "critical": {"color": "#C0392B", "bg": "#FDEDEC", "icon": "\U0001F534", "label": "Critical"},
+    "warning":  {"color": "#B9770E", "bg": "#FEF5E7", "icon": "\U0001F7E1", "label": "Warning"},
+    "info":     {"color": "#1F77B4", "bg": "#F1F3F6", "icon": "\U0001F535", "label": "Info"},
 }
+
+
+def _section_header_html(title: str) -> str:
+    return (f'<div style="background:{PRIMARY_COLOR};color:white;padding:16px;'
+            f'border-radius:8px;font-size:26px;font-weight:bold;margin-top:10px;'
+            f'margin-bottom:12px;text-align:center;">{title}</div>')
+
+
+def _subsection_header_html(title: str) -> str:
+    return (f'<div style="background:{SECONDARY_COLOR};border-left:6px solid {PRIMARY_COLOR};'
+            f'color:{PRIMARY_COLOR};padding:10px;border-radius:6px;font-size:18px;'
+            f'font-weight:bold;margin-top:12px;margin-bottom:10px;text-align:center;">'
+            f'<i>{title}</i></div>')
+
+
+def _finding_box_html(f: AuditFinding) -> str:
+    style = SEVERITY_STYLE.get(f.severity, SEVERITY_STYLE["info"])
+    fix_html = (f'<div style="margin-top:6px;color:black;"><b>Suggested fix:</b> {f.suggested_fix}</div>'
+                if f.suggested_fix else "")
+    return (
+        f'<div style="background:{style["bg"]};border-left:6px solid {style["color"]};'
+        f'padding:12px 16px;border-radius:6px;margin:10px 0;line-height:1.5;">'
+        f'<div style="color:{style["color"]};font-weight:bold;">{style["icon"]} {style["label"]} — {f.title}:</div>'
+        f'<div style="color:black;margin-top:4px;">{f.message}</div>'
+        f'{fix_html}</div>'
+    )
 
 
 def generate_html_report(findings: list[AuditFinding], model_name: str = "Model") -> str:
     """
-    Returns a full standalone HTML document (for saving to reports/*.html)
-    whose visual styling lives on an inner <div>, not <body>. This matters:
-    Jupyter's display(HTML(...)) strips the <html>/<body> wrapper and only
-    keeps the inner content, so any styling placed on <body> is silently
-    discarded and the report ends up inheriting the notebook's own theme
-    (e.g. going dark/muddy under a dark Jupyter theme). Styling the div
-    directly means the report renders identically everywhere it's shown.
+    Full standalone HTML document styled to match this project's established
+    theme (indigo section headers, thistle subsection headers, colored
+    severity boxes) rather than a generic card layout. All styling lives on
+    inline-styled <div>s, not <body> — Jupyter's display(HTML(...)) discards
+    <body> styling, so this keeps the report looking identical whether it's
+    opened standalone or shown inline in a notebook cell.
     """
     n_critical = sum(1 for f in findings if f.severity == "critical")
     n_warning = sum(1 for f in findings if f.severity == "warning")
-    rows = ""
-    for f in findings:
-        style = _SEVERITY_STYLE.get(f.severity, {"border": "#6b7280", "bg": "#f9fafb", "label": f.severity})
-        fix = (
-            f'<p style="margin: 8px 0 0 0; color: #111827;">'
-            f'<b>Suggested fix:</b> {f.suggested_fix}</p>'
-            if f.suggested_fix else ""
-        )
-        rows += f"""
-        <div style="border-left: 6px solid {style['border']}; border-radius: 6px;
-                    padding: 14px 18px; margin-bottom: 14px; background: {style['bg']};
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-          <h3 style="margin: 0 0 6px 0; color: #111827; font-size: 16px;">{style['label']} — {f.title}</h3>
-          <p style="margin: 4px 0; color: #1f2937; line-height: 1.5;">{f.message}</p>
-          {fix}
-        </div>"""
+    n_info = sum(1 for f in findings if f.severity == "info")
+
+    if findings:
+        boxes = "".join(_finding_box_html(f) for f in findings)
+    else:
+        boxes = ('<div style="text-align:center;color:#2E8B57;font-weight:bold;padding:16px;">'
+                  '\u2705 No issues detected by the current checks.</div>')
 
     body_content = f"""
-    <div style="font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 800px;
-                margin: 0 auto; background: #ffffff; color: #111827; padding: 28px 32px;
-                border-radius: 10px;">
-      <h1 style="margin: 0 0 4px 0; color: #111827;">Model Doctor — Audit Report</h1>
-      <h2 style="margin: 0 0 16px 0; color: #6b7280; font-weight: 500;">{model_name}</h2>
-      <p style="color: #374151;"><b>{n_critical}</b> critical issue(s), <b>{n_warning}</b> warning(s) found.</p>
-      {rows if findings else '<p style="color:#374151;">No issues detected by the current checks.</p>'}
+    <div style="font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 850px;
+                margin: 0 auto; background: #ffffff; padding: 24px 32px; border-radius: 10px;">
+      {_section_header_html("\U0001FA7A Model Doctor — Audit Report")}
+      {_subsection_header_html(model_name)}
+      <p style="text-align:center; color:#333;">
+        <b>{n_critical}</b> critical &nbsp;|&nbsp; <b>{n_warning}</b> warning &nbsp;|&nbsp; <b>{n_info}</b> info
+      </p>
+      {boxes}
     </div>"""
 
     return f"""<!DOCTYPE html>
@@ -420,12 +446,12 @@ def generate_html_report(findings: list[AuditFinding], model_name: str = "Model"
 
 
 def generate_markdown_report(findings: list[AuditFinding], model_name: str = "Model") -> str:
-    lines = [f"# Model Doctor — Audit Report\n## {model_name}\n"]
+    lines = [f"# \U0001FA7A Model Doctor — Audit Report\n## {model_name}\n"]
     for f in findings:
-        label = _SEVERITY_LABEL.get(f.severity, f.severity)
-        lines.append(f"### {label} — {f.title}\n{f.message}\n")
+        style = SEVERITY_STYLE.get(f.severity, SEVERITY_STYLE["info"])
+        lines.append(f"### {style['icon']} {style['label']} — {f.title}\n{f.message}\n")
         if f.suggested_fix:
             lines.append(f"**Suggested fix:** {f.suggested_fix}\n")
     if not findings:
-        lines.append("No issues detected by the current checks.\n")
+        lines.append("\u2705 No issues detected by the current checks.\n")
     return "\n".join(lines)
