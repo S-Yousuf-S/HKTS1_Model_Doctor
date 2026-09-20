@@ -2,6 +2,9 @@
 Model Doctor — Automated ML Audit Toolkit
 Core module: detectors + report generator.
 
+File: model_doctor.py
+Author: Yousuf S.R. Sakkaf
+
 Design principle: every detector is generic — it inspects a *fitted*
 sklearn-style estimator/Pipeline and the train/test data it was fit
 on, using duck-typing (predict / predict_proba / classes_ / steps)
@@ -374,8 +377,8 @@ def run_audit(pipeline, X_train, X_test, y_train, y_test) -> list[AuditFinding]:
 # language as prerequisites.py's success_box/warning_box/info_box pattern)
 # ---------------------------------------------------------------------------
 
-PRIMARY_COLOR = "indigo"
-SECONDARY_COLOR = "thistle"
+PRIMARY_COLOR = "darkcyan"
+SECONDARY_COLOR = "mintcream"
 
 SEVERITY_STYLE = {
     "critical": {"color": "#C0392B", "bg": "#FDEDEC", "icon": "\U0001F534", "label": "Critical"},
