@@ -16,6 +16,7 @@ etc. without hardcoding.
 from dataclasses import dataclass, field
 from typing import Any, Optional
 import copy
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
@@ -474,3 +475,21 @@ def generate_markdown_report(findings: list[AuditFinding], model_name: str = "Mo
     if not findings:
         lines.append("\u2705 No issues detected by the current checks.\n")
     return "\n".join(lines)
+
+def audit_from_files(model_path: str, train_csv: str, test_csv: str, target_column: str):
+    """
+    Load a fitted model from .pkl/.joblib and a train/test CSV pair (each
+    including the target column), and run the full audit. Returns
+    (findings, X_train, X_test, y_train, y_test) so callers can also
+    display the underlying data or compute their own metrics.
+    """
+
+    model = joblib.load(model_path)
+    train_df = pd.read_csv(train_csv)
+    test_df = pd.read_csv(test_csv)
+    X_train = train_df.drop(columns=[target_column])
+    y_train = train_df[target_column]
+    X_test = test_df.drop(columns=[target_column])
+    y_test = test_df[target_column]
+    findings = run_audit(model, X_train, X_test, y_train, y_test)
+    return findings, X_train, X_test, y_train, y_test
