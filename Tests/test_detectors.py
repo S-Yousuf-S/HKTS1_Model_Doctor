@@ -100,6 +100,26 @@ def test_no_false_positive_on_balanced_classes():
     assert findings == []
 
 
+# --- confidence scaling -------------------------------------------------------
+
+def test_confidence_scales_with_severity_of_imbalance():
+    X, y_mild = make_classification(n_samples=500, weights=[0.82, 0.18], random_state=1)
+    y_mild = pd.Series(y_mild)
+    f_mild = detect_class_imbalance(y_mild)
+
+    X2, y_severe = make_classification(n_samples=500, weights=[0.97, 0.03], random_state=1)
+    y_severe = pd.Series(y_severe)
+    f_severe = detect_class_imbalance(y_severe)
+
+    assert f_mild[0].confidence < f_severe[0].confidence
+
+
+def test_confidence_is_bounded():
+    X, y = _make_clf_data(n_samples=500, weights=[0.95, 0.05])
+    findings = detect_class_imbalance(y)
+    for f in findings:
+        assert 0.0 <= f.confidence <= 1.0
+        
 # --- misleading metrics -------------------------------------------------------
 
 def test_detects_accuracy_f1_gap_on_imbalanced_data():
