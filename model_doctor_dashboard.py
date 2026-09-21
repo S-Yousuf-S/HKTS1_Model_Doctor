@@ -230,9 +230,18 @@ with tab2:
         test_file = st.file_uploader(
             "Test CSV", type="csv", key="test_file",
             help="The exact test/holdout data this model was evaluated on, including the target column.")
-    target = st.text_input(
-        "Target column name",
-        help="Exact column name (case-sensitive) holding the label/value being predicted.")
+
+    if train_file is not None:
+        train_file.seek(0)
+        preview_df = pd.read_csv(train_file)
+        train_file.seek(0)  # reset so the file can still be saved to disk later
+        target = st.selectbox(
+            "Target column",
+            preview_df.columns,
+            help="The column holding the label/value being predicted — must match what the model was trained on.")
+    else:
+        target = None
+        st.caption("Upload a training CSV above to choose the target column.")
 
 
     if st.button("\U0001F50D Run Audit", type="primary", key="existing_model_btn"):
