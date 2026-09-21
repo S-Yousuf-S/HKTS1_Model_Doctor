@@ -41,6 +41,8 @@ class AuditFinding:
     message: str                 # plain-language explanation, non-technical friendly
     evidence: dict = field(default_factory=dict)   # supporting numbers
     suggested_fix: Optional[str] = None
+    confidence: float = 1.0     # 0.0-1.0 — how far past its flagging threshold this sits,
+                                 # not a separate "is this real" judgment call
 
     def to_dict(self):
         return {
@@ -50,7 +52,22 @@ class AuditFinding:
             "message": self.message,
             "evidence": self.evidence,
             "suggested_fix": self.suggested_fix,
+            "confidence": self.confidence,
         }
+
+
+def _confidence_from_ratio(value: float, threshold: float, cap_multiplier: float = 3.0) -> float:
+    """
+    Confidence rises from 0.5 (value just past its flagging threshold — a
+    genuinely borderline case) toward 0.99 as value moves further past that
+    threshold, saturating once value >= cap_multiplier * threshold. Computed
+    from numbers each detector already has — not an invented certainty.
+    """
+    if threshold <= 0:
+        return 0.75
+    ratio = value / threshold
+    scaled = min(1.0, max(0.0, (ratio - 1) / (cap_multiplier - 1)))
+    return round(0.5 + 0.49 * scaled, 2)
 
 
 def _is_classifier(estimator) -> bool:
@@ -85,6 +102,7 @@ def detect_duplicate_contamination(X_train: pd.DataFrame, X_test: pd.DataFrame) 
         if n_overlap > 0:
             pct = 100 * n_overlap / max(len(X_test), 1)
             severity = "critical" if pct > 1 else "warning"
+            confidence = _confidence_from_ratio(pct, threshold=1.0, cap_multiplier=5.0)
             findings.append(AuditFinding(
                 issue_type="train_test_contamination",
                 severity=severity,
@@ -102,6 +120,7 @@ def detect_duplicate_contamination(X_train: pd.DataFrame, X_test: pd.DataFrame) 
                     "using a method that guarantees no row (or group, e.g. same "
                     "customer/session) appears in both sets."
                 ),
+                confidence=confidence
             ))
     except Exception as e:
         findings.append(_detector_error("train_test_contamination", e))
@@ -135,7 +154,11 @@ def detect_preprocessing_leakage(pipeline, X_train: pd.DataFrame) -> list[AuditF
                     refit_step.fit(X_prefix)
                     refit_val = getattr(refit_step, attr)
                     if not np.allclose(fitted_val, refit_val, rtol=1e-3, atol=1e-6):
-                        findings.append(AuditFinding(
+                        rel_diff = float(np.max(np.abs(
+                            np.asarray(fitted_val, dtype=float) - np.asarray(refit_val, dtype=float)
+                        ) / (np.abs(np.asarray(refit_val, dtype=float)) + 1e-8)))
+                        confidence = _confidence_from_ratio(rel_diff, threshold=1e-3, cap_multiplier=50.0)
+                        findings.append(AuditFinding(                    
                             issue_type="data_leakage",
                             severity="critical",
                             title=f"Preprocessing step '{name}' may have been fit before the train/test split",
@@ -154,6 +177,7 @@ def detect_preprocessing_leakage(pipeline, X_train: pd.DataFrame) -> list[AuditF
                                 "Never call .fit() or .fit_transform() on data that "
                                 "includes the test set."
                             ),
+                            confidence=confidence
                         ))
                     break  # one matching attribute is enough evidence either way
         except Exception as e:
@@ -176,6 +200,7 @@ def detect_class_imbalance(y_train, imbalance_ratio_threshold: float = 4.0) -> l
     ratio = counts.iloc[0] / counts.iloc[-1]
     if ratio >= imbalance_ratio_threshold:
         severity = "critical" if ratio >= 10 else "warning"
+        confidence = _confidence_from_ratio(float(ratio), threshold=imbalance_ratio_threshold, cap_multiplier=5.0)
         findings.append(AuditFinding(
             issue_type="class_imbalance",
             severity=severity,
@@ -192,6 +217,7 @@ def detect_class_imbalance(y_train, imbalance_ratio_threshold: float = 4.0) -> l
                 "or at minimum report precision/recall/F1 per class instead of "
                 "plain accuracy."
             ),
+            confidence=confidence
         ))
     return findings
 
@@ -210,6 +236,7 @@ def detect_misleading_metrics(estimator, X_test, y_test) -> list[AuditFinding]:
         f1_macro = f1_score(y_test, y_pred, average="macro", zero_division=0)
         gap = acc - f1_macro
         if gap > 0.15:
+            confidence = _confidence_from_ratio(gap, threshold=0.15, cap_multiplier=3.0)
             findings.append(AuditFinding(
                 issue_type="misleading_metrics",
                 severity="warning" if gap < 0.3 else "critical",
@@ -227,6 +254,7 @@ def detect_misleading_metrics(estimator, X_test, y_test) -> list[AuditFinding]:
                     "alongside accuracy, and use those—not accuracy—to judge "
                     "the model on imbalanced data."
                 ),
+                confidence=confidence
             ))
     except Exception as e:
         findings.append(_detector_error("misleading_metrics", e))
@@ -252,6 +280,9 @@ def detect_overfitting_signal(estimator, X_train, y_train, X_test, y_test) -> li
         gap = train_score - test_score
         if gap > 0.15 or train_score > 0.995:
             severity = "critical" if gap > 0.3 or train_score > 0.999 else "warning"
+            confidence_gap = _confidence_from_ratio(gap, threshold=0.15, cap_multiplier=3.0) if gap > 0 else 0.5
+            confidence_ceiling = round(0.5 + 0.49 * min(1.0, max(0.0, (train_score - 0.995) / 0.005)), 2)
+            confidence = max(confidence_gap, confidence_ceiling)
             findings.append(AuditFinding(
                 issue_type="overfitting_signal",
                 severity=severity,
@@ -271,6 +302,7 @@ def detect_overfitting_signal(estimator, X_train, y_train, X_test, y_test) -> li
                     "cross-validation to tune hyperparameters, or gather more "
                     "training data."
                 ),
+                confidence=confidence
             ))
     except Exception as e:
         findings.append(_detector_error("overfitting_signal", e))
@@ -286,6 +318,7 @@ def detect_data_quality_issues(X_train: pd.DataFrame, X_test: pd.DataFrame) -> l
     try:
         train_na = X_train.isna().mean()
         bad_cols = train_na[train_na > 0]
+        confidence = _confidence_from_ratio(float(bad_cols.max()), threshold=0.01, cap_multiplier=30.0)
         if len(bad_cols) > 0:
             findings.append(AuditFinding(
                 issue_type="data_quality",
@@ -299,6 +332,7 @@ def detect_data_quality_issues(X_train: pd.DataFrame, X_test: pd.DataFrame) -> l
                 ),
                 evidence={"columns_with_na": bad_cols.round(4).to_dict()},
                 suggested_fix="Impute explicitly (median/mode/model-based) inside the pipeline, and verify the same imputer is applied at inference time.",
+                confidence=confidence
             ))
 
         train_cols, test_cols = set(X_train.columns), set(X_test.columns)
@@ -315,6 +349,7 @@ def detect_data_quality_issues(X_train: pd.DataFrame, X_test: pd.DataFrame) -> l
                 evidence={"train_only": sorted(train_cols - test_cols),
                           "test_only": sorted(test_cols - train_cols)},
                 suggested_fix="Ensure identical feature engineering/encoding is applied to train and test (and future production data).",
+                confidence=0.99
             ))
 
         for col in X_train.select_dtypes(include=["object", "category"]).columns:
@@ -333,6 +368,7 @@ def detect_data_quality_issues(X_train: pd.DataFrame, X_test: pd.DataFrame) -> l
                         ),
                         evidence={"column": col, "unseen_categories": sorted(list(unseen))[:10]},
                         suggested_fix="Use an encoder with explicit unknown-category handling (e.g. OneHotEncoder(handle_unknown='ignore')).",
+                        confidence=0.95
                     ))
     except Exception as e:
         findings.append(_detector_error("data_quality", e))
@@ -405,10 +441,14 @@ def _finding_box_html(f: AuditFinding) -> str:
     style = SEVERITY_STYLE.get(f.severity, SEVERITY_STYLE["info"])
     fix_html = (f'<div style="margin-top:6px;color:black;"><b>Suggested fix:</b> {f.suggested_fix}</div>'
                 if f.suggested_fix else "")
+    confidence_html = (
+        f'<span style="float:right;color:#6b7280;font-weight:normal;font-size:13px;">'
+        f'{f.confidence:.0%} confidence</span>'
+    )
     return (
         f'<div style="background:{style["bg"]};border-left:6px solid {style["color"]};'
         f'padding:12px 16px;border-radius:6px;margin:10px 0;line-height:1.5;">'
-        f'<div style="color:{style["color"]};font-weight:bold;">{style["icon"]} {style["label"]} — {f.title}:</div>'
+        f'<div style="color:{style["color"]};font-weight:bold;">{style["icon"]} {style["label"]} — {f.title}:{confidence_html}</div>'
         f'<div style="color:black;margin-top:4px;">{f.message}</div>'
         f'{fix_html}</div>'
     )
@@ -469,7 +509,7 @@ def generate_markdown_report(findings: list[AuditFinding], model_name: str = "Mo
     lines = [f"# \U0001FA7A Model Doctor — Audit Report\n## {model_name}\n"]
     for f in findings:
         style = SEVERITY_STYLE.get(f.severity, SEVERITY_STYLE["info"])
-        lines.append(f"### {style['icon']} {style['label']} — {f.title}\n{f.message}\n")
+        lines.append(f"### {style['icon']} {style['label']} — {f.title} ({f.confidence:.0%} confidence)\n{f.message}\n")
         if f.suggested_fix:
             lines.append(f"**Suggested fix:** {f.suggested_fix}\n")
     if not findings:

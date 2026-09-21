@@ -11,7 +11,6 @@ Usage:
 """
 import argparse
 from datetime import datetime
-from email import parser
 from model_doctor import audit_from_files, generate_html_report, generate_markdown_report
 
 
