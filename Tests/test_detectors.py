@@ -111,6 +111,14 @@ def test_detects_accuracy_f1_gap_on_imbalanced_data():
     # not guaranteed to always fire depending on random_state, so just check the detector runs cleanly
     assert isinstance(findings, list)
 
+# --- no false positives on balanced metrics -------------------------------------------------------
+
+def test_no_false_positive_on_balanced_metrics():
+    X, y = _make_clf_data(n_samples=500, weights=[0.5, 0.5])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0, stratify=y)
+    clf = LogisticRegression().fit(X_train, y_train)
+    findings = detect_misleading_metrics(clf, X_test, y_test)
+    assert findings == []
 
 # --- overfitting signal --------------------------------------------------------
 
@@ -127,6 +135,17 @@ def test_detects_overfitting_regression():
     findings = detect_overfitting_signal(model, X_train, y_train, X_test, y_test)
     assert any(f.issue_type == "overfitting_signal" for f in findings)
 
+# --- no false positives on well-fit regression -------------------------------------------------------
+
+def test_no_false_positive_on_well_fit_regression():
+    X, y = make_regression(n_samples=300, n_features=5, noise=15, random_state=0)
+    X = pd.DataFrame(X, columns=[f"f{i}" for i in range(5)])
+    y = pd.Series(y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
+    model = RandomForestRegressor(n_estimators=50, max_depth=4, random_state=0)
+    model.fit(X_train, y_train)
+    findings = detect_overfitting_signal(model, X_train, y_train, X_test, y_test)
+    assert findings == []
 
 # --- data quality ---------------------------------------------------------------
 
