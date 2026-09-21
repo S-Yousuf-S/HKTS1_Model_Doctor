@@ -146,6 +146,7 @@ Model_Doctor/
 ├── Assets/
 │   ├── Titanic.csv                      # Generalizability — real, moderately messy data
 │   ├── INDUSTRY.csv                     # Generalizability — real, clean, large-scale data
+|   ├── hero_image.png                   # README hero image
 │   └── model_doctor_logo.png            # App icon / dashboard header logo
 │
 ├── Tests/
@@ -155,8 +156,6 @@ Model_Doctor/
 │   ├── sample_audit_*.html              # 2–3 committed sample audit reports
 │   └── summary_chart.png                # Findings-per-pipeline chart (from the notebook)
 │
-├── readme_assets/
-│   └── hero_image.png                   # README hero image
 │
 ├── model_doctor.py                      # Core detector library + report generators
 ├── model_doctor_cli.py                  # CLI: audit any .pkl/.joblib model + CSVs
