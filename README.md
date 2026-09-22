@@ -4,11 +4,11 @@
 ![Python](https://img.shields.io/badge/Language-Python%203.10+-blue)
 ![Notebook](https://img.shields.io/badge/Environment-Google%20Colab-orange)
 ![Domain](https://img.shields.io/badge/Domain-ML%20Auditing%20%26%20Diagnostics-blueviolet)
-![Track](https://img.shields.io/badge/Hackathon-Season%201%20%E2%80%94%20ML%20Track-teal)
-![Tests](https://img.shields.io/badge/Tests-13%20Passing-brightgreen)
+![Track](https://img.shields.io/badge/Track-Machine%20Learning-teal)
+![Tests](https://img.shields.io/badge/Tests-15%20Passing-brightgreen)
 ![Models](https://img.shields.io/badge/Model%20Types-4%20Supported-informational)
 ![Dashboard](https://img.shields.io/badge/Dashboard-Live%20on%20Streamlit-ff4b4b)
-![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
+![Status](https://img.shields.io/badge/Status-Completed-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ---
@@ -60,7 +60,8 @@ This project answers one central question:
 - Detect all 6 required categories of ML pipeline failure: data leakage, train/test contamination, misleading metrics, overfitting signals, data quality issues, and class imbalance blindness.
 - Prove the auditor works by constructing 4 deliberately-flawed pipelines and confirming each intended bug is caught.
 - Prove the auditor generalizes by running it, unmodified, against real and synthetic data it was never tuned against.
-- Generate a clear, non-technical audit report explaining what's wrong, why it matters, and how to fix it — in HTML, Markdown, notebook, CLI, and live dashboard form.
+- Attach a confidence score to every finding, reflecting how far past its flagging threshold it sits — not just severity, but how borderline or clear-cut each case is.
+- Generate a clear, non-technical audit report — in HTML, Markdown, notebook, CLI, and live dashboard form.
 
 ---
 
@@ -78,11 +79,11 @@ This project answers one central question:
 
 | Component | Environment | Purpose | Key Output |
 |---|---|---|---|
-| **model_doctor.py** | Any (Colab / local / dashboard / CLI) | Core detector library — 6 detectors, report generation, file-based audit entry point | Importable module, used by every other component |
+| **model_doctor.py** | Any (Colab / local / dashboard / CLI) | Core detector library — 6 detectors, confidence scoring, report generation, file-based audit entry point | Importable module, used by every other component |
 | **model_doctor_demo.ipynb** | Google Colab (or local Jupyter/VS Code) | 4 proof-of-work pipelines, 4 generalizability checks, test suite run, CLI demo | HTML reports rendered inline, `Reports/summary_chart.png` |
 | **model_doctor_cli.py** | Colab shell or local terminal | Audit any saved `.pkl`/`.joblib` model against train/test CSVs from the command line | Timestamped `.html`/`.md` audit report |
 | **model_doctor_dashboard.py** | Local only (or deployed) | Live, non-technical GUI for both training-and-auditing and auditing an existing model | Interactive report + downloadable HTML |
-| **Tests/test_detectors.py** | Any | 13 automated tests proving each detector fires correctly and doesn't false-positive | `pytest` pass/fail |
+| **Tests/test_detectors.py** | Any | 15 automated tests proving each detector fires correctly, doesn't false-positive, and scores confidence sensibly | `pytest` pass/fail |
 
 ---
 
@@ -110,6 +111,8 @@ No dataset was provided by the hackathon organizers by design — sourcing and c
 | Data quality issues | `detect_data_quality_issues` | Test suite (missing values, column mismatch, unseen categories) |
 | Class imbalance blindness | `detect_class_imbalance` | Pipeline 4 (imbalanced breast_cancer) |
 
+Every finding above also carries a **confidence score** — how far past its flagging threshold it sits — distinguishing a clear-cut case from a genuinely borderline one, computed from numbers each detector already produces rather than a separately invented certainty judgment.
+
 ---
 
 ## 🧪 Proof-of-Work — 4 Deliberately-Flawed Pipelines
@@ -134,7 +137,7 @@ No dataset was provided by the hackathon organizers by design — sourcing and c
 | 3 | `make_classification` (synthetic) | Classification | 1 warning — moderate, correctly-scaled overfitting signal |
 | 4 | `make_regression` (synthetic) | Regression | 1 warning — moderate, correctly-scaled overfitting signal |
 
-**Key finding:** the auditor's severity judgments hold up on data and models it has never seen — not just the four fixtures it was built and tuned against.
+**Key finding:** the auditor's severity and confidence judgments hold up on data and models it has never seen — not just the four fixtures it was built and tuned against.
 
 ---
 
@@ -146,16 +149,18 @@ Model_Doctor/
 ├── Assets/
 │   ├── Titanic.csv                      # Generalizability — real, moderately messy data
 │   ├── INDUSTRY.csv                     # Generalizability — real, clean, large-scale data
-|   ├── hero_image.png                   # README hero image
+│   ├── hero_image.png                   # README hero image
 │   └── model_doctor_logo.png            # App icon / dashboard header logo
 │
 ├── Tests/
-│   └── test_detectors.py                # 13 automated tests — one per detector, positive + negative
+│   └── test_detectors.py                # 15 automated tests — one per detector behavior, positive + negative + confidence
 │
 ├── Reports/
 │   ├── sample_audit_*.html              # 2–3 committed sample audit reports
 │   └── summary_chart.png                # Findings-per-pipeline chart (from the notebook)
 │
+├── .streamlit/
+│   └── config.toml                      # Dashboard theme configuration
 │
 ├── model_doctor.py                      # Core detector library + report generators
 ├── model_doctor_cli.py                  # CLI: audit any .pkl/.joblib model + CSVs
@@ -179,7 +184,7 @@ Model_Doctor/
 | **xgboost** | Gradient boosting model type (Pipeline 3, CLI demo) |
 | **matplotlib / seaborn** | Findings-per-pipeline summary chart |
 | **joblib** | Model serialization (`.pkl`) for the CLI and dashboard's "existing model" mode |
-| **pytest** | The 13-test automated suite |
+| **pytest** | The 15-test automated suite |
 | **streamlit** | The live dashboard |
 
 <details>
@@ -292,24 +297,27 @@ streamlit run model_doctor_dashboard.py
 
 **A:** No — it's inherent to every detector from the start, not a bolt-on. Each of the 6 detectors assigns critical/warning/info based on its own thresholds (e.g. contamination severity by percentage of test set affected, imbalance by ratio, overfitting by train/test gap), so severity-aware output was never a separate development phase.
 
+**Q: How is the confidence score different from severity?**
+
+**A:** Severity answers "how bad is this." Confidence answers "how sure are we this isn't a borderline call" — two findings can share the same severity while sitting at very different distances from their flagging threshold (e.g. a class-imbalance ratio of 4.3:1 vs. 24:1, both flagged, but the second is far more clearly a real problem). Confidence is computed directly from each detector's existing threshold math, not a separately invented number.
+
 **Q: Which bonus items from the brief were attempted?**
 
-**A:** Severity scoring (built-in, see above) and the CLI-on-any-`.pkl`/CSV feature are both implemented and tested. The Streamlit dashboard goes beyond the brief entirely — it isn't a listed requirement. Auto-suggest-and-apply-fix-with-before/after, and a numeric confidence score per finding, were deprioritized under time constraints in favor of hardening the core 6 detectors, the generalizability proof, and the test suite — see Future Scope.
+**A:** Severity scoring (built-in from the start), the confidence score, and the CLI-on-any-`.pkl`/CSV feature are all implemented and tested. The Streamlit dashboard goes beyond the brief entirely — it isn't a listed requirement. Auto-suggest-and-apply-fix-with-before/after was deprioritized under time constraints — see Future Scope for why.
 
 ---
 
 ## 📌 Conclusion
 
-This project builds a model-agnostic ML pipeline auditor from the ground up — 6 detector categories, validated first against 4 pipelines deliberately built to break it, then against real and synthetic data it was never tuned against. Every intended bug was caught with the correct severity; every properly-built pipeline was correctly left alone. The tool is usable as a notebook, a CLI, and a live dashboard, all sharing one core library.
+This project builds a model-agnostic ML pipeline auditor from the ground up — 6 detector categories with confidence-scored findings, validated first against 4 pipelines deliberately built to break it, then against real and synthetic data it was never tuned against. Every intended bug was caught with the correct severity; every properly-built pipeline was correctly left alone. The tool is usable as a notebook, a CLI, and a live dashboard, all sharing one core library.
 
-**Final verdict: zero false positives across every tested scenario, real and synthetic alike** — the consistent result across this project is that severity-aware, model-agnostic auditing is achievable without hardcoding to any single dataset or model type.
+**Final verdict: zero false positives across every tested scenario, real and synthetic alike** — the consistent result across this project is that severity- and confidence-aware, model-agnostic auditing is achievable without hardcoding to any single dataset or model type.
 
 ---
 
 ## 🚀 Future Scope
 
-- A numeric confidence score per finding, distinguishing high-certainty issues from borderline ones.
-- Auto-suggest-and-apply-fix, with a before/after metric comparison to show the improvement directly.
+- Auto-suggest-and-apply-fix, with a before/after metric comparison to show the improvement directly — deprioritized here because automatically *correcting* six different failure types safely is meaningfully harder than *detecting* them, and was judged too high-risk to attempt this late without threatening the rest of the submission.
 - Extending `detect_preprocessing_leakage` to cover more preprocessing step types (e.g. `SimpleImputer`'s `statistics_`, not just scaler-style attributes).
 - A CLI flag to run the generalizability suite (Titanic/INDUSTRY/synthetic) against a user-supplied model directly, rather than only the notebook's own fixtures.
 
