@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Model Doctor Audit Report — Pipeline 1: breast_cancer / leakage</title></head>
+<body style="margin:0; padding: 24px; background:#f3f4f6;">
+    <div style="font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 850px;
+                margin: 0 auto; background: #ffffff; padding: 24px 32px; border-radius: 10px;">
+      <div style="background:darkcyan;color:white;padding:16px;border-radius:8px;font-size:26px;font-weight:bold;margin-top:10px;margin-bottom:12px;text-align:center;">🩺 Model Doctor — Audit Report</div>
+      <div style="background:mintcream;border-left:6px solid darkcyan;color:darkcyan;padding:10px;border-radius:6px;font-size:18px;font-weight:bold;margin-top:12px;margin-bottom:10px;text-align:center;"><i>Pipeline 1: breast_cancer / leakage</i></div>
+      
+      <p style="text-align:center; color:#333;">
+        <b>1</b> critical &nbsp;|&nbsp; <b>0</b> warning &nbsp;|&nbsp; <b>0</b> info
+      </p>
+      <div style="background:#FDEDEC;border-left:6px solid #C0392B;padding:12px 16px;border-radius:6px;margin:10px 0;line-height:1.5;"><div style="color:#C0392B;font-weight:bold;">🔴 Critical — Preprocessing step 'scaler' may have been fit before the train/test split:<span style="float:right;color:#6b7280;font-weight:normal;font-size:13px;">99% confidence</span></div><div style="color:black;margin-top:4px;">The fitted 'scaler' step's learned statistics (mean_) don't match what you'd get fitting it on the training data alone. This usually means the scaler/encoder saw the test (or full) data during fitting — a classic leakage bug that makes test performance look better than it really is.</div><div style="margin-top:6px;color:black;"><b>Suggested fix:</b> Fit 'scaler' only on X_train inside the pipeline, then transform X_test with the already-fitted step. Never call .fit() or .fit_transform() on data that includes the test set.</div></div>
+    </div></body></html>
