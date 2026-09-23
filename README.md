@@ -2,7 +2,6 @@
 ### *A General-Purpose Auditor for Diagnosing Common ML Pipeline Failures*
 
 ![Python](https://img.shields.io/badge/Language-Python%203.10+-blue)
-![Notebook](https://img.shields.io/badge/Environment-Google%20Colab-orange)
 ![Domain](https://img.shields.io/badge/Domain-ML%20Auditing%20%26%20Diagnostics-blueviolet)
 ![Track](https://img.shields.io/badge/Track-Machine%20Learning-teal)
 ![Tests](https://img.shields.io/badge/Tests-15%20Passing-brightgreen)
