@@ -148,26 +148,35 @@ Model_Doctor/
 ├── Assets/
 │   ├── Titanic.csv                      # Generalizability — real, moderately messy data
 │   ├── INDUSTRY.csv                     # Generalizability — real, clean, large-scale data
-│   ├── hero_image.png                   # README hero image
+│   ├── hero_image.png                   # README / presentation hero image
 │   └── model_doctor_logo.png            # App icon / dashboard header logo
 │
+├── Dashboard Assets/
+│   ├── classification_clean.csv               # Dashboard test — clean binary classification
+│   ├── classification_imbalanced.csv          # Dashboard test — class imbalance detection
+│   ├── regression_AmesHousing.csv             # Dashboard test — regression workflow
+│   ├── regression_IMDb_top100_movies_2025.csv # Dashboard test — continuous IMDb rating regression                                   
+│   └── regression_melb_data.csv               # Dashboard test — Melbourne housing regression
+│
 ├── Tests/
-│   └── test_detectors.py                # 15 automated tests — one per detector behavior, positive + negative + confidence
+│   └── test_detectors.py                # 15 automated tests — positive, negative,
+│                                        #and confidence-score validation
 │
 ├── Reports/
-│   ├── sample_audit_*.html              # 2–3 committed sample audit reports
-│   └── summary_chart.png                # Findings-per-pipeline chart (from the notebook)
+│   ├── sample_audit_*.html              # Sample generated audit reports
+│   └── summary_chart.png                # Findings-per-pipeline chart
 │
 ├── .streamlit/
 │   └── config.toml                      # Dashboard theme configuration
 │
 ├── model_doctor.py                      # Core detector library + report generators
 ├── model_doctor_cli.py                  # CLI: audit any .pkl/.joblib model + CSVs
-├── model_doctor_dashboard.py            # Streamlit dashboard (2 modes)
-├── model_doctor_demo.ipynb              # Main notebook — proof-of-work + generalizability + tests
+├── model_doctor_dashboard.py            # Streamlit dashboard — train & audit / audit existing model
+├── model_doctor_demo.ipynb              # Main notebook — proof-of-work,
+│                                        #generalizability, confidence scoring & tests
 │
-├── requirements.txt                     # Slim — CLI & dashboard runtime only
-├── requirements-full.txt                # Complete — notebook & local development
+├── requirements.txt                     # Runtime dependencies — CLI & dashboard
+├── requirements-full.txt                # Complete dependencies — notebook & development
 ├── LICENSE
 └── README.md
 ```
