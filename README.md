@@ -42,6 +42,8 @@ Rather than rely on organizer-provided broken examples, this project builds its 
 
 **[model-doctor.streamlit.app](https://model-doctor.streamlit.app)**
 
+(Note: To run the dashboard locally, see [Step 3 in Installation & Setup](#step-3-dashboard) below.)
+
 Two modes are available:
 
 - **Train & Audit:** Upload a CSV, select the target column, task type, and model, then train and audit the resulting pipeline in one step.
@@ -286,6 +288,7 @@ In Colab, prefix the command with `!`.
 
 ---
 
+<a id="step-3-dashboard"></a>
 ### Step 3 — Run the Dashboard (Local *only*, required)
 
 The dashboard **cannot run in Colab** — `streamlit run` needs a local server. Either use the live link above, or run it yourself:
