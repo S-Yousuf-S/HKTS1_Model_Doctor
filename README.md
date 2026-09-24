@@ -32,6 +32,10 @@ Rather than rely on organizer-provided broken examples, this project builds its 
 > and every generalizability check closes with an Interpretation block explaining what was found,
 > with exact numbers, and why it matters. The notebook closes with an Executive Summary answering
 > the project's central question directly.
+>
+> **📊 Presentation:** For a concise visual walkthrough of the project, evaluation results,
+> architecture, dashboard, validation, and key design decisions, see the
+> **[Model Doctor Presentation](./Model_Doctor_Presentation_YS.pptx)** included in this repository.
 
 ---
 
