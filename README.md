@@ -120,7 +120,7 @@ This project answers one central question:
 | `Assets/INDUSTRY.csv` | Generalizability — real, large, clean data | External, real-world |
 | `sklearn.datasets.make_classification` / `make_regression` | Generalizability — synthetic | Generated, never tuned against |
 
-No dataset was provided by the hackathon organizers by design — sourcing and constructing test data is part of the challenge itself.
+No dataset was provided by design — sourcing and constructing test data is part of the challenge itself.
 
 ---
 
